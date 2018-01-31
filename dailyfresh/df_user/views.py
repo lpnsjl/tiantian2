@@ -3,10 +3,8 @@ from django.http import HttpResponse,JsonResponse
 from df_user.models import *
 from hashlib import sha1
 from django.core.cache import cache
-from datetime import datetime
-from df_user.verify_code import get_verify_code
-from dailyfresh import settings
-import os
+from df_user.verify_code import cache_verify_code,encrypte,get_seesion_id
+from df_user import user_decorator
 
 
 # 注册页面
@@ -39,9 +37,7 @@ def register_handle(request):
         userinfo.uemail = email
 
         # 对密码加密进行存储
-        s = sha1()
-        s.update(pwd.encode('utf-8'))
-        new_pwd = s.hexdigest()
+        new_pwd = encrypte(pwd)
         userinfo.upwd = new_pwd
 
         userinfo.save()
@@ -52,17 +48,132 @@ def register_handle(request):
 
 # 登录页面
 def login(request):
-    verify_code_path = os.path.join(settings.BASE_DIR, 'static')
-    now = datetime.now()
-    t = now.timestamp()
-    filename = ''.join(str(t).split('.'))
-    verify_code = get_verify_code(verify_code_path,filename)
-    # 将验证码存入缓存中
-    cache.set(filename,verify_code,30)
+    filename = cache_verify_code()
     context = {
-        'filename':filename,
+        'filename':filename,'user_error': 0, 'pwd_error':0,'code_error':0
     }
     return render(request,'df_user/login.html',context)
 
 def login_handle(request):
-    return
+    post = request.POST
+    uname = post.get('username')
+    pwd = post.get('pwd')
+    jizhu = post.get('jizhu')
+    verify_code = post.get('verify_code')
+    verify_code_key = post.get('verify_code_key')
+
+    user = UserInfo.objects.filter(uname=uname)
+    if len(user)!=0:
+        # 密码加密，方便对比
+        new_pwd = encrypte(pwd)
+        # print (new_pwd)
+
+        if user[0].upwd == new_pwd:
+            if cache.get(verify_code_key) == verify_code:
+                url = request.COOKIES.get('url','')
+                if url == '':
+                    url = '/index/'
+                red = redirect(url)
+
+
+                # print ('登录成功')
+                if jizhu == 1:
+                    red.set_cookie('jizhu',uname)
+                else:
+                    # 让cookie立马失效
+                    red.set_cookie('jizhu','',max_age=0)
+                  # 将用户信息存到服务器，以便用户验证
+                # session_id向浏览器发送一份，服务器保存一份做对比
+                session_id = get_seesion_id()
+                red.set_cookie('session_id',session_id)
+                request.session[session_id] = {'uid': user[0].id, 'uname': uname}
+                return red
+            else:
+                # 验证码错误
+                filename = cache_verify_code()
+                context = {
+                    'filename': filename, 'user_error': 0, 'pwd_error': 0, 'code_error': 1
+                }
+                return render(request, 'df_user/login.html', context)
+
+        else:
+            # 密码错误
+            filename = cache_verify_code()
+            context = {
+                'filename': filename, 'user_error': 0, 'pwd_error': 1, 'code_error': 0
+            }
+            return render(request, 'df_user/login.html', context)
+
+
+    else:
+        # 用户名错误
+        filename = cache_verify_code()
+        context = {
+            'filename': filename, 'user_error': 1, 'pwd_error': 0, 'code_error': 0
+        }
+        return render(request,'df_user/login.html',context)
+
+def logout(request):
+    session_id = request.COOKIES['session_id']
+    if session_id in request.session:
+        del request.session[session_id]
+    return redirect('/index/')
+
+@user_decorator.login
+def info(request):
+    session_id = request.COOKIES['session_id']
+    try:
+        uid = request.session.get(session_id).get('uid')
+
+        user = UserInfo.objects.get(id=uid)
+
+        context = {
+            'title': '个人信息',
+            'user': user,
+
+        }
+        return render(request, 'df_user/user_center_info.html',context)
+    except:
+        return redirect('/index/')
+
+@user_decorator.login
+def order(request):
+    session_id = request.COOKIES['session_id']
+    try:
+        uid = request.session.get(session_id).get('uid')
+
+        user = UserInfo.objects.get(id=uid)
+
+        context = {
+            'title': '全部订单',
+            'user': user,
+
+        }
+        return render(request, 'df_user/user_center_order.html', context)
+    except:
+        return redirect('/index/')
+
+#@user_decorator.login
+def site(request):
+    session_id = request.COOKIES['session_id']
+    try:
+        uid = request.session.get(session_id).get('uid')
+
+        user = UserInfo.objects.get(id=uid)
+        if request.method == 'POST':
+            post = request.POST
+            user.ushou = post['ushou']
+            print (user.ushou)
+            user.uaddress = post['address']
+            user.uyoubian = post['youbian']
+            user.uphone = post['phone']
+            user.save()
+
+        context = {
+            'title': '收货地址',
+            'user': user,
+
+        }
+        return render(request, 'df_user/user_center_site.html', context)
+    except:
+        return redirect('/index/')

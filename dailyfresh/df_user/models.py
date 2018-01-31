@@ -3,7 +3,7 @@ from django.db import models
 
 class UserInfo(models.Model):
     uname = models.CharField(max_length=20)
-    upwd = models.CharField(max_length=20)
+    upwd = models.CharField(max_length=100)
     uemail = models.CharField(max_length=20)
     ushou = models.CharField(max_length=10, default='')
     uaddress = models.CharField(max_length=50,default='')

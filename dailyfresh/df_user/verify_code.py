@@ -1,10 +1,17 @@
 # -*- coding: UTF-8 -*
 """
-生成验证码
+1 生成验证码
+2 sha1加密
+3 生成seeion_id的随机字符串
 """
 from PIL import ImageDraw,Image,ImageFont
 import random,string,os
+from datetime import datetime
+from django.core.cache import cache
+from dailyfresh import settings
+from hashlib import sha1
 
+# 1111111111111111111111111
 # 图片的背景色
 backcolor = (random.randint(0,100),random.randint(0,100),255)
 # 图片的宽高
@@ -20,7 +27,7 @@ def get_text():
         text_list.append(str(i))
 
     text = ''.join(random.sample(text_list,4))
-    return text
+    return text.lower()
 
 # 绘制干扰点
 def draw_point(draw):
@@ -46,7 +53,31 @@ def get_verify_code(path,filename):
     image.save('%s/%s.png'% (path,filename))
     return text
 
+def cache_verify_code():
+    verify_code_path = os.path.join(settings.BASE_DIR, 'static/code_image')
+    now = datetime.now()
+    t = now.timestamp()
+    filename = ''.join(str(t).split('.'))
+    verify_code = get_verify_code(verify_code_path, filename)
+    # 将验证码存入缓存中
+    cache.set(filename, verify_code, 30)
+    return filename
 
+# 2222222222222222222222222222222222222
+# sha1加密
+def encrypte(text):
+    s = sha1()
+    s.update(text.encode('utf-8'))
+    new_text = s.hexdigest()
+    return new_text
+
+def get_seesion_id():
+    text_list = list(string.ascii_letters)
+    for i in range(50):
+        text_list.append(str(i))
+    text = ''.join(random.sample(text_list,10))
+    session_id = encrypte(text)
+    return session_id
 
 if __name__ == '__main__':
     get_verify_code('C:/Users/佘俊林/Desktop','aa')
