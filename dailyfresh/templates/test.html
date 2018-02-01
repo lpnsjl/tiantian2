@@ -1,0 +1,19 @@
+{%load poll_extras%}
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+{{a|cut1:list|safe}}
+<br>
+{{a|cut2:'a'}}
+<br>
+{{html|safe}}
+<br>
+<p>The time is {%current_time "%Y-%m-%d %I:%M %p"%}.</p>
+<br>
+{%list_parse list,1 "aaaa"%}
+</body>
+</html>
