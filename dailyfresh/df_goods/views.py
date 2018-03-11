@@ -6,14 +6,14 @@ import datetime
 
 
 def index(request):
+    session_id = request.COOKIES.get('session_id','')
+    user = request.session.get(session_id)
+
     type0 = TypeInfo.objects.get(title='新鲜水果')
-    print (type0)
     goods00 = type0.goodsinfo_set.order_by('-id')[0:4]
-    print (goods00[0])
     goods01 = type0.goodsinfo_set.order_by('-gclick')[0:4]
 
     type1 = TypeInfo.objects.get(title='海鲜水产')
-    print(type1)
     goods10 = type1.goodsinfo_set.order_by('-id')[0:4]
     goods11 = type1.goodsinfo_set.order_by('-gclick')[0:4]
 
@@ -42,6 +42,8 @@ def index(request):
         'goods40': goods40, 'goods41': goods41,
         'goods50': goods50, 'goods51': goods51,
         'title':'首页',
+        'session_id': session_id,
+        'user':user,
     }
     return render(request, 'df_goods/index.html',context)
 ############################################################################
@@ -58,10 +60,12 @@ def index(request):
 
 def detail(request,id):
     # try:
+    session_id = request.COOKIES.get('session_id', '')
+    user = request.session.get(session_id)
     news = GoodsInfo.objects.order_by('-id')[0:2]
     goods = GoodsInfo.objects.get(id=id)
     type_id = goods.gtype_id
-    print (type_id)
+    # print (type_id)
     type_name = TypeInfo.objects.get(id=goods.gtype_id)
     context = {
         'title':'详情页',
@@ -69,15 +73,38 @@ def detail(request,id):
         'news':news,
         'type_id':type_id,
         'type_name':type_name,
-    }
+        'session_id':session_id,
+        'user':user
 
-    return render(request,'df_goods/detail.html',context)
+    }
+    # 修改点击量
+    goods.gclick += 1
+    goods.save()
+
+    response = render(request, 'df_goods/detail.html', context)
+    goods_ids = request.COOKIES.get('goods_ids', '')
+    if goods_ids == '':
+        # 用户第一次登录第一次浏览商品
+        goods_ids = str(goods.id)
+    else:
+        goods_id_list = goods_ids.split(',')
+        if goods_id_list.count(str(goods.id)) >= 1:
+            goods_id_list.remove(str(goods.id))
+        goods_id_list.insert(0, str(goods.id))
+        if len(goods_id_list) > 5:
+            goods_id_list.pop()
+        goods_ids = ','.join(goods_id_list)
+    # print(goods_ids)
+    response.set_cookie('goods_ids', goods_ids)
+    return response
     # except:
     #     # 定义404页面
     #     raise Http404('<h1>页面未找到</h1>')
 
 def list(request,id,pindex,sort):
     # try:
+    session_id = request.COOKIES.get('session_id', '')
+    user = request.session.get(session_id)
     type_name = TypeInfo.objects.get(id=id).title
     goods_list = TypeInfo.objects.get(id=int(id)).goodsinfo_set.all()
     if sort == '0':
@@ -103,7 +130,9 @@ def list(request,id,pindex,sort):
         'pindex':pindex,
         'id':id,
         'sort':sort,
-        'type_name':type_name
+        'type_name':type_name,
+        'session_id':session_id,
+        'user':user
     }
     return render(request,'df_goods/list.html',context)
     # except:

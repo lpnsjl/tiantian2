@@ -5,6 +5,9 @@ from hashlib import sha1
 from django.core.cache import cache
 from df_user.verify_code import cache_verify_code,encrypte,get_seesion_id
 from df_user import user_decorator
+from df_goods.models import *
+from df_order.models import *
+from django.core.paginator import *
 
 
 # 注册页面
@@ -117,46 +120,74 @@ def logout(request):
     session_id = request.COOKIES['session_id']
     if session_id in request.session:
         del request.session[session_id]
-    return redirect('/index/')
+
+    red = redirect('/index/')
+    red.delete_cookie('session_id')
+    red.set_cookie('goods_ids','',max_age=0)
+
+    # print (request.session[session_id])
+    #print (request.COOKIES['session_id'])
+    #print (request.COOKIES[ 'sessionid'])
+    #del request.COOKIES[ 'sessionid']
+    return red
 
 @user_decorator.login
 def info(request):
     session_id = request.COOKIES['session_id']
     try:
         uid = request.session.get(session_id).get('uid')
-
         user = UserInfo.objects.get(id=uid)
 
-        context = {
-            'title': '个人信息',
-            'user': user,
+        goods_ids = request.COOKIES.get('goods_ids', '')
+        if goods_ids == '':
+            context = {
+                'title': '个人信息',
+                'user': user,
+                'goods_ids':goods_ids,
+            }
+        else:
+            # print(goods_ids)
+            zuijin = goods_ids.split(',')
+            goods_list = []
+            for id in zuijin:
+                goods_list.append(GoodsInfo.objects.filter(id=int(id))[0])
+            context = {
+                'title': '个人信息',
+                'user': user,
+                'goods_ids': goods_ids,
+                'goods_list':goods_list,
+            }
 
-        }
+
+
         return render(request, 'df_user/user_center_info.html',context)
     except:
         return redirect('/index/')
 
 @user_decorator.login
-def order(request):
+def order(request,pindex):
     session_id = request.COOKIES['session_id']
-    try:
-        uid = request.session.get(session_id).get('uid')
+    # try:
+    uid = request.session.get(session_id).get('uid')
+    user = UserInfo.objects.get(id=uid)
+    order = OrderInfo.objects.filter(user_id=uid).order_by('-oid')
+    paginator = Paginator(order, 2)
+    if pindex == '':
+        pindex = 1
+    page = paginator.page(int(pindex))
+    context = {
+        'title': '全部订单',
+        'user': user,
+        'page':page,
+    }
+    return render(request, 'df_user/user_center_order.html', context)
+    # except:
+    #     return redirect('/index/')
 
-        user = UserInfo.objects.get(id=uid)
-
-        context = {
-            'title': '全部订单',
-            'user': user,
-
-        }
-        return render(request, 'df_user/user_center_order.html', context)
-    except:
-        return redirect('/index/')
-
-#@user_decorator.login
+@user_decorator.login
 def site(request):
-    session_id = request.COOKIES['session_id']
     try:
+        session_id = request.COOKIES['session_id']
         uid = request.session.get(session_id).get('uid')
 
         user = UserInfo.objects.get(id=uid)

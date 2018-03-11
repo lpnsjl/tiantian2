@@ -1,14 +1,36 @@
 {%extends 'df_goods/base.html'%}
 {%block goodsinfo%}
+    <script>
+           $(function(){
+           $('.add_goods').click(function() {
+               //alert($('.login_btn').text())
+               //alert($(this).attr('value'));
+               //判断其是否登录
+               if ($('.login_btn').text().indexOf('登录') >= 0) {
+                   alert('请先登录后再购买');
+                   //alert($(this).attr('value'));
+                   //从本页面跳转到登录页面
+                   location.href = '/user/login';
+                   return;
+               }
+               var goods_id = $(this).attr('value');
+               $.get('/cart/add'+goods_id+'_1',function(data){
+                         $('.goods_count').text(data.count);
+               });
+           });
+        });
+    </script>
 	<div class="search_bar clearfix">
-		<a href="index.html" class="logo fl"><img src="/static/images/logo.png"></a>
+		<a href="/index/" class="logo fl"><img src="/static/images/logo.png"></a>
 		<div class="search_con fl">
-			<input type="text" class="input_text fl" name="" placeholder="搜索商品">
-			<input type="button" class="input_btn fr" name="" value="搜索">
+			<form method='get' action="/search/" target="_blank">
+			<input type="text" class="input_text fl" name="q" placeholder="搜索商品">
+			<input type="submit" class="input_btn fr" value="搜索">
+			</form>
 		</div>
 		<div class="guest_cart fr">
-			<a href="#" class="cart_name fl">我的购物车</a>
-			<div class="goods_count fl">1</div>
+			<a href="/cart/" class="cart_name fl">我的购物车</a>
+			<div class="goods_count fl">0</div>
 		</div>
 	</div>
 
@@ -76,7 +98,7 @@
 					<div class="operate">
 						<span class="prize">￥{{goods.gprice}}</span>
 						<span class="unit">{{goods.gprice}}/{{goods.gunit}}</span>
-						<a href="#" class="add_goods" title="加入购物车"></a>
+						<a href="javascript:void(0);"  class="add_goods" title="加入购物车" value="{{goods.id}}"></a>
 					</div>
 				</li>
                 {%endfor%}

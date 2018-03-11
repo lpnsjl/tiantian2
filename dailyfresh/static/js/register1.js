@@ -3,7 +3,7 @@ $(function(){
     var error_pwd = true;
     var error_cpwd = true;
     var error_email = true;
-    var error_allow = true;
+    var error_allow = false;
 
     //检查用户名
     function check_username(){
@@ -129,12 +129,17 @@ $(function(){
             $('.error_tip2').hide();
         }
         else{
+            error_allow = true;
             $('.error_tip2').html('请同意使用协议！').show();
         }
     });
 
     //提交注册信息
-    $('.reg_sub').submit(function(){
+    $('.reg_form').submit(function(){
+        check_username();
+		check_pwd();
+		check_cpwd();
+		check_email();
         if(error_allow==false && error_pwd==false && error_name==false && error_cpwd==false && error_email==false)
         {
             return true;
